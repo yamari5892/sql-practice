@@ -71,7 +71,6 @@ erDiagram
 
 **目的:** 各国の中で、どの旅行先の想定予算が最も高いか、ランキング形式で可視化します。
 ```sql
--- ここに、ウィンドウ関数を使ったクエリのコードを貼り付けてください
 SELECT
     des.destination_name,
     con.country_name,
@@ -82,7 +81,45 @@ FROM
 JOIN
     countries con ON con.country_id = des.country_id;
 ```
+### クエリ2：コストパフォーマンス分析
 
-
+**目的:** 各国の中で、平均より評価が高く、かつ平均より費用が安かった「コストパフォーマンスに優れた旅行」を抽出します。
+```sql
+WITH country_stats AS (
+    SELECT
+        des.country_id,
+        AVG(tl.rating) AS avg_rating,
+        AVG(tl.actual_cost) AS avg_cost
+    FROM
+        trip_logs tl
+    JOIN
+        destinations des ON tl.destination_id = des.destination_id
+    GROUP BY
+        des.country_id
+)
+SELECT
+    u.user_name AS 'ユーザー名',
+    c.country_name AS '国名',
+    d.destination_name AS '場所',
+    tl.rating AS '評価',
+    tl.actual_cost AS '実費',
+    cs.avg_rating AS '国別平均評価',
+    cs.avg_cost AS '国別平均費用'
+FROM
+    trip_logs tl
+-- 3つのテーブルをJOINで連結していく
+JOIN
+    destinations d ON tl.destination_id = d.destination_id
+JOIN
+    countries c ON d.country_id = c.country_id
+JOIN
+    users u ON tl.user_id = u.user_id
+JOIN
+    country_stats cs ON d.country_id = cs.country_id
+WHERE
+    -- 条件：評価が国別平均以上、かつ、費用が国別平均以下
+    tl.rating >= cs.avg_rating AND tl.actual_cost <= cs.avg_cost
+;
+```
 ## 5. 使用技術
 - **データベース:** MySQL 8.0
